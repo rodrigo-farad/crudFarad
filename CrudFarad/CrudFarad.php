@@ -1,7 +1,10 @@
 <?php  
 
+
 use CrudF\Paginacao;
 
+include('biblioteca/load/Controller.php');
+include('biblioteca/load/banco.php');
 class Crud extends CrudFarad\Table
 {
     private $dados=array();
@@ -11,20 +14,22 @@ class Crud extends CrudFarad\Table
     public $where;
     public $sql;
     public $limite;
-    public $paginacao;
+    public $paginacao=array();
+    public $index_pagina;
     public $exetoArray;
     public $id_insert;
    
     function __construct(){
-
+        $Controller=new Controller;
+        $Controller->load('service/banco');
         $this->crud_banco=BANCO['BANCO_NOME'];
-        $this->banco=new banco;
+        $this->banco=new banco();
         $this->where='';
         $this->limite='';
         $this->exetoArray=null;
-        $this->paginacao=['limitePaginacao'=>2];
-        $this->paginacao=['registrosPorPagina'=>8];
-        
+        $this->paginacao['limitePaginacao']=2;
+        $this->paginacao['registrosPorPagina']=null;
+        $this->index_pagina=null;
    
     }
 
@@ -46,7 +51,7 @@ function insert(){
         $valorLabel='';
         $valoresCampos='';
         foreach ($this->dados as $key=>$valor) {
-            $valorLabel.="$key,";
+            $valorLabel.="`$key`,";
             $valoresCampos.=":$key,";
         }
         $label=substr($valorLabel, 0, -1);
@@ -56,6 +61,7 @@ function insert(){
         $this->banco->query("INSERT INTO $this->crud_tabela ($label) VALUES($campos) $this->where");
         foreach ($this->dados as $key=>$valor) {
             $this->banco->bind(":$key", $valor);
+            
         }
     } else {
 
@@ -131,13 +137,24 @@ function  delete(){
     }
 
     $this->where='';
-    return $this->banco->executa()?true:false;
+    try {
+        
+        return $this->banco->executa()?true:false;
+
+    } catch (Exception $e) {
+
+        return false;
+    }
+   
 }
 
 
 
 function  get($campos=null){
     if (is_null($this->sql)) {
+            if (is_null($campos)) {
+                $campos = "*";
+            }
     $this->banco->query("SELECT $campos FROM $this->crud_tabela  $this->where");
 
     }else{
@@ -152,11 +169,17 @@ function  get($campos=null){
 
 function  get_hall(){
 
+
+
+if(is_null($this->index_pagina)){
     $formulario=filter_input_array(INPUT_POST, FILTER_SANITIZE_STRING);
+    $retornoPage=isset($formulario['p'])?$formulario['p']:'1,1';
+}else{
+
+    $retornoPage=$this->index_pagina;
 
 
-$retornoPage=isset($formulario['p'])?$formulario['p']:'1,1';
-
+}
 
    $pagArray=explode(",",$retornoPage);
 
@@ -166,10 +189,14 @@ $retornoPage=isset($formulario['p'])?$formulario['p']:'1,1';
     $this->paginacao['paginaAtual']=$inicio;
     $this->paginacao['pagiMarcacao']=isset($pagArray[1])?$pagArray[1]:0;
 
+if(!is_null($this->paginacao['registrosPorPagina'])){
 
+    $this->limite='';
     $inicio=($inicio-1)*$this->paginacao['registrosPorPagina'];
 
     $this->limite($inicio, $this->paginacao['registrosPorPagina']);
+}
+  
 
 
     if (is_null($this->sql)) {
@@ -262,12 +289,19 @@ return true;
 
 
 
-function where($where){
+function where($where,$condicao=null){
 
     if($this->where==''){
         $this->where.='WHERE '.$where;
     }else{
-        $this->where.=' AND '.$where; 
+if(is_null($condicao)){
+    $this->where.=' AND '.$where; 
+}else{
+
+    $this->where.=' '.$condicao.' '.$where;   
+}
+
+        
     }
     
         
@@ -305,6 +339,21 @@ private function contaRegistros($sql){
 $resultados=$this->banco->resultados();
 return $resultados[0]['total'];
 }
+
+
+
+
+/** especial do crud farad
+ *@param  Object $dados
+ */
+public function forCrud($node){
+    foreach ($node as $key => $value) {
+        $this->$key=$value;
+    }
+}
     
 }
+
+
+
 ?>
