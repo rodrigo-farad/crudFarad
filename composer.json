@@ -1,0 +1,20 @@
+{
+    "name": "rodrigo-farad/crudfarad",
+    "description": "Biblioteca de CRUD moderna em PHP 8.3",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Rodrigo Farad",
+            "email": "rodrigofarad@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Admin\\Biblioteca\\CrudFarad\\": "./"
+        }
+    },
+    "require": {
+        "php": "^8.3"
+    }
+}
