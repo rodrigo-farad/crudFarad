@@ -1,13 +1,14 @@
 <?php  
 namespace  Admin\Biblioteca\CrudFarad;
 use  Admin\Biblioteca\CrudFarad\Paginacao;
-use  Admin\Biblioteca\service\banco as conecta;
+use  Admin\Biblioteca\CrudFarad\Tabelas;
+use  Admin\Biblioteca\service\conecta;
 use Exception;
 
 class Crud{
 
     private $dados=array();
-    private $banco;
+    public $banco;
     public $crud_banco;
     public $crud_tabela;
     public $where;
@@ -20,26 +21,28 @@ class Crud{
 	public $params=null;
     public $join;
     public $labels;
+    public $relacion;
     public $campos;
     
     function __construct($createDb=false){
        
-           include("../Admin/Biblioteca/service/banco.php");
+           //include("../Admin/Biblioteca/service/banco.php");
 
        
             $this->banco=new conecta($createDb);
             $this->where='';
             $this->limite='';
+            $this->relacion='';     // em teste
             $this->join = '';
             $this->exetoArray=null;
-            $this->paginacao['limitePaginacao']=2;
+            $this->paginacao['limitePaginacao']=8;
             $this->paginacao['registrosPorPagina']=null;
             $this->index_pagina=null;
             $this->labels='';
             $this->campos='';
-
-
-      
+            $this->paginacao['total_registros']=null;
+            $this->paginacao['link']=null;
+        
                    
     }
 
@@ -67,29 +70,18 @@ function join($tabela, $condicao, $tipo = null) {
 
 
 function insert($dados){
+
 $this->dados=$dados;
+
     if(is_null($this->sql)) {
 
-
-$valorLabel='';
-$valoresCampos='';
-        foreach ($this->dados as $key=>$valor) {
-                $valorLabel.="`$key`,";
-                $valoresCampos.=":$key,";
-        }
-        $this->labels=substr($valorLabel, 0, -1);
-        $campos=substr($valoresCampos, 0, -1);
- 
-$this->banco->query("INSERT INTO $this->crud_tabela ($this->labels) VALUES($campos) $this->where $this->join");
-            foreach ($this->dados as $key=>$valor) {
-                        $this->banco->bind(":$key", $valor);
-                        
-            }
-
+$this->selectSQL("insert");
+   
     } else {
 
         $this->banco->query($this->sql);
     }
+
     $retorno=is_array($this->params)?$this->banco->executa($this->params):$this->banco->executa();
     $this->id_insert=$this->banco->ultimoID();
 $this->resetAttributes();
@@ -100,10 +92,14 @@ return $retorno;
 
 
 
+function  ultimoID(){
+    return $this->banco->ultimoID();
+}
 
 
-
-
+function maxID($tabela){
+return $this->banco->maxID($tabela);
+}
 
 
     public function update($dados)
@@ -131,44 +127,104 @@ $this->selectSQL('delete');
    
 }
 
-
 function  get($campos="*"){
-    $this->selectSQL("select");
-    $this->setLabels($campos);
+   
+     $this->limit();
+
+    if(is_null($this->sql)){
+        $this->checkOptions($campos);
+        $this->selectSQL("select");
+    }else{
+$cleanedSql = preg_replace('/;\s*$/', '', $this->sql);
+$cleanedSql=$this->sql.' '.$this->limite;
+$this->banco->query($cleanedSql);
+
+    }
+    
 $retorno=is_array($this->params)?$this->banco->resultado($this->params):$this->banco->resultado();
-$this->paginacao['total_registros']=$this->count();
+
+if(is_null($this->sql)){
+    $this->paginacao['total_registros']=$this->count();
+}
 $this->resetAttributes();
-                                 return $retorno;
+
+         return $retorno;
 
   
 }
 
 
-function  getAll($campos="*"){
 
-  
-        $this->setLabels($campos); 
-        $this->paginationData();                           
-         $this->limite();
-         $this->selectSQL("select");
-    $resultados=is_array($this->params)?$this->banco->resultados($this->params):$this->banco->resultados();
-    $this->paginacao['total_registros']=$this->count();
-    $this->create_paginacao();
- $this->resetAttributes();
-    return $resultados; 
+
+
+
+
+
+
+
+
+function getAll($options = array())
+{ 
+    
+
+    if (!array_key_exists('total_registros', $this->paginacao) ) {
+        $this->paginacao['total_registros'] = $this->count('getall');
+    }
+    
+    $this->limit();
+
+    if(is_null($this->sql)){
+        $this->checkOptions($options);
+        $this->selectSQL("select");
+    }else{
+$cleanedSql = preg_replace('/;\s*$/', '', $this->sql);
+$cleanedSql=$this->sql." {$this->limite}";
+$this->banco->query($cleanedSql);
+
+    }
    
 
+    $resultados = is_array($this->params) ? $this->banco->resultados($this->params) : $this->banco->resultados();
+
+    
+    
+    $this->resetAttributes();
+
+    return $resultados;
+}
+
+function checkOptions($options)
+{
+
+if(is_null($this->sql)){
+    if (isset($options['label'])) {
+        $label = $options['label'];
+        $this->setLabels($label);
+    }else{
+        $this->setLabels("*");  
+    }
+}
+
+   
 
     
 }
 
 
-function limite(){
-    if($this->paginacao['registrosPorPagina'] && $this->index_pagina) {
-        $this->limite ='LIMIT ' . ($this->index_pagina - 1) * $this->paginacao['registrosPorPagina'] . ', ' . $this->paginacao['registrosPorPagina'];
-    }
-}
 
+function limit(){
+
+    $this->paginationData();
+
+    if($this->paginacao['registrosPorPagina'] && $this->index_pagina) {
+       $this->limite ='LIMIT ' . ($this->index_pagina - 1) * $this->paginacao['registrosPorPagina'] . ', ' . $this->paginacao['registrosPorPagina'];
+       
+    }
+    
+ 
+       
+   
+}
 
 
 
@@ -183,84 +239,146 @@ return $this->count()>0?true:false;
     
     }
 
+public function executa(){
+   
+    $this->banco->executa();
+}
 
 
 
-
-    function where(string $where, string $condicao = 'AND'): self {
-        if (!is_string($where)) {
-            throw new \InvalidArgumentException('O parâmetro $where deve ser uma string.');
-        }
-        
-        $this->where .= $this->where === ''
-            ? 'WHERE ' . $where
-            : " $condicao $where";
-    
-        return $this;
+public function where(string $where, string $condicao = 'AND'): self {
+    if (!is_string($where)) {
+        throw new \InvalidArgumentException('O parâmetro $where deve ser uma string.');
     }
+    
+    $this->where .= $this->where === ''
+        ? "WHERE $where"
+        : " $condicao $where";
+
+    return $this;
+}
 
 
 
 
+    public function count($padrao='padrao'){
 
-    public function count():int{
+        $countSql = "";
 
-        $this->banco->query("SELECT COUNT(*) as total FROM $this->crud_tabela $this->where $this->join");
-        $retorno=is_array($this->params)?$this->banco->resultado($this->params):$this->banco->resultado();
-        $this->resetAttributes();
-                                      return  (int)$retorno['total'];
+        if (is_null($this->sql)) {
+
+           // Usar os atributos da classe para construir a consulta padrão de contagem
+           $this->banco->query("SELECT COUNT(*) as total FROM $this->crud_tabela $this->where $this->join"); 
+
+        } else {
+           
+// Se um SQL personalizado for passado, modificar a consulta para realizar a contagem
+
+$cleanedSql = preg_replace('/;\s*$/', '', $this->sql);
+
+$countSql = "SELECT COUNT(*) as total FROM ($cleanedSql) AS subquery";
+ $this->banco->query($countSql);
+
+  
+        }
+
+      $retorno=is_array($this->params)?$this->banco->resultado($this->params):$this->banco->resultado();
+
+      if($padrao=='padrao'){
+$this->resetAttributes();
+
+      }
+       
+         return (int)$retorno['total'];
 
     }
 
  
     
 
-
-
-
-
-
-
-public function paginationData($pagina = null) {
-
-if(is_null($this->index_pagina)){
-    if (!isset($pagina) || !is_numeric($_GET)) {
-         $this->index_pagina = 1; } 
-         else { 
-            $this->index_pagina = intval($_GET['p']); 
-            } 
-        }elseif(!is_null($pagina)){
-            $this->index_pagina =$pagina ; 
+    public function paginationData($pagina = null) {
+        if (!isset($pagina) && !isset($_GET['p'])) {
+            $this->index_pagina = 1;
+        } else {
+            $pagina = isset($_GET['p']) ? $_GET['p'] : $pagina;
+            $pagina = is_numeric($pagina) ? $pagina : 1;
+            $pagina = intval($pagina);
+            $pagina = max($pagina, 1);
+            $this->index_pagina = $pagina;
         }
+    
         return $this;
+    }
+    
+    
+    
+
+public function setLink(string $link): self {
+    // Verifica se o link informado é válido
+    if (filter_var($link, FILTER_VALIDATE_URL) === false) {
+        throw new Exception('O link informado não é válido.');
+    }
+
+    // Define o link da paginação
+    $this->paginacao['link'] = $link;
+
+    // Retorna a própria instância da classe
+    return $this;
 }
 
 
-        function create_paginacao(){
+function create_paginacao($função=null){  //  $tipo=null resultara em link normal caso coloque a função ele executara
+
+    
+        $this->paginacao['total_registros'] = $this->count();
+    
+$this->paginationData();
+   
+        $paginacao=new Paginacao($this->index_pagina,$this->paginacao['registrosPorPagina'],$this->paginacao['total_registros'] ,$this->paginacao['limitePaginacao'], $this->paginacao['link'],$função);
+         $pages = $paginacao->render_pages($this->index_pagina); 
+         $this->paginacao['paginacao']= $pages;
+       
+        
+}
 
 
-            if (isset($this->paginacao['active']) && $this->paginacao['active'] === 'on') { 
-                $paginacao=new Paginacao($this->index_pagina,$this-> paginacao['registrosPorPagina'],$this->paginacao['totalRegistros'] ,$this->paginacao['limitePaginacao'], $this->paginacao['link']);
-                 $pages = $paginacao->render_pages($this->index_pagina); 
-                 $this->paginacao['paginacao']= $pages;
-                 }else{
-                    $this->paginacao['paginacao']= '';
-                 }
-                
+        
+
+function resetAttributes() {
+    
+        $this->where = '';
+        $this->join = '';
+        $this->limite = '';
+        $this->sql = null;
+        $this->labels = '';    
+        $this->campos = '';
+        $this->index_pagina = null;
+    }
+
+
+
+
+
+function relacion() {
+    // Cria uma nova instância da classe conecta
+    $conecta = new conecta(false);
+    $Tabelas = new Tabelas();
+
+    // Chama tabelasRelacionadas passando a tabela e a conexão
+    $relacion = $Tabelas->tabelasRelacionadas($this->crud_tabela, $conecta);
+    
+        if (!empty($this->relacion)) {
+        foreach ($this->relacion as $table) {
+            // Monta a condição de junção
+            $condicao = "{$tabela}.{$table['foreign_key']} = {$table['name']}.{$table['primary_key']}";
+            // Chama o método join da classe Crud
+            $this->Crud->join($table['name'], $condicao);
         }
-        
-        
-
-function resetAttributes(){
-
-    $this->where = '';
-    $this->join = '';
-    $this->limite = '';
-    $this->sql = null;
-    $this->labels='';
-    $this->campos='';
-    $this->index_pagina=null;
+    return $this;
 }
+
+
+
 
 function setLabels($labels){
     $this->labels=$labels;
@@ -273,8 +391,11 @@ function setCampos($campos){
 
 
 
+
+
+
 public function  selectSQL($tipo){
-    if(is_null($this->sql)) {
+    
 
 switch ($tipo) {
     case 'delete':
@@ -292,10 +413,28 @@ switch ($tipo) {
             $this->banco->query("UPDATE $this->crud_tabela SET $this->labels $this->where $this->join");
             break;
             case 'select':
+             
  $this->banco->query("SELECT $this->labels FROM $this->crud_tabela $this->where $this->join $this->limite"); 
                 break;
  case 'insert':
-    $this->banco->query("INSERT INTO $this->crud_tabela ($this->labels) VALUES($this->campos) $this->where $this->join");
+
+$valorLabel='';
+$valoresCampos='';
+
+        foreach ($this->dados as $key=>$valor) {
+                $valorLabel.="`$key`,";
+                $valoresCampos.=":$key,";
+        }
+        $this->labels=substr($valorLabel, 0, -1);
+        $campos=substr($valoresCampos, 0, -1);
+ 
+
+
+    $this->banco->query("INSERT INTO $this->crud_tabela ($this->labels) VALUES($this->campos) ");
+      foreach ($this->dados as $key=>$valor) {
+                        $this->banco->bind(":$key", $valor);
+                        
+            }
    break;
     default:
         throw new Exception("Erro tipo de comando sql inváldio no \"{selectSQL(\$tipo)}\"");
@@ -303,9 +442,7 @@ switch ($tipo) {
 }
 
        
-    } else {
-        $this->banco->query($this->sql);
-    }
+  
 
 }
 
@@ -319,7 +456,7 @@ private function blindFor(){
 
 
 function params($params){
-    if(is_string($params)){
+    if(is_array($params)){
         $this->params=$params; 
     }else{
         throw new Exception("Erro:: parametros devem ser um Array()");
@@ -328,6 +465,8 @@ function params($params){
     return $this;
     }
 
+
+    
 function sql($sql){
     $this->sql=$sql;
     return $this;
