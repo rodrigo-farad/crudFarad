@@ -394,7 +394,7 @@ function setCampos($campos){
 
 
 
-public function  selectSQL($tipo){
+ function  selectSQL($tipo){
     
 
 switch ($tipo) {
@@ -447,7 +447,7 @@ $valoresCampos='';
 }
 
 
-private function blindFor(){
+ function blindFor(){
     foreach ($this->dados as $key => $valor) {
         $this->banco->bind(":$key", $valor);
         }
@@ -476,32 +476,32 @@ function sql($sql){
 
 
 
-public function beginTransaction(){
+ function beginTransaction(){
 	$this->banco->beginTransaction();
     return $this;
 }
 
 
 
-public function commit(){
+ function commit(){
 	$this->banco->commit();
 
 }
 
-public function rollBack(){
+ function rollBack(){
 
 
 	$this->banco->rollBack();
 }
 
 
-public function inTransaction(){
+ function inTransaction(){
 
 return $this->banco->inTransaction();
 
 }
    
-public function quote($variavel){
+ function quote($variavel){
 
      $this->banco->quote($variavel);
      return $this;
@@ -514,4 +514,4 @@ public function quote($variavel){
 
 
 
-?>
+}
