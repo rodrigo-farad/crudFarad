@@ -1,6 +1,6 @@
 <?php
 
-namespace Admin\Biblioteca\CrudFarad;
+namespace CrudFarad;
 
 use PDO;
 use PDOException;

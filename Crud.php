@@ -1,8 +1,8 @@
 <?php  
-namespace  Admin\Biblioteca\CrudFarad;
-use  Admin\Biblioteca\CrudFarad\Paginacao;
-use  Admin\Biblioteca\CrudFarad\Tabelas;
-use  Admin\Biblioteca\service\conecta;
+namespace  CrudFarad;
+use  CrudFarad\Paginacao;
+use  CrudFarad\Tabelas;
+use  CrudFarad\conecta;
 use Exception;
 
 class Crud{

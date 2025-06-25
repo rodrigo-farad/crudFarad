@@ -1,6 +1,6 @@
 <?php
 
-namespace Admin\Biblioteca\service;
+namespace CrudFarad\service;
 
 use PDO;
 use PDOException;

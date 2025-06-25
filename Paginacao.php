@@ -1,6 +1,6 @@
 <?php
 
-namespace Admin\biblioteca\CrudFarad;
+namespace CrudFarad;
 
 class Paginacao {
     public $current_page;
