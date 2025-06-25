@@ -370,12 +370,16 @@ function relacion() {
         if (!empty($this->relacion)) {
         foreach ($this->relacion as $table) {
             // Monta a condição de junção
-            $condicao = "{$tabela}.{$table['foreign_key']} = {$table['name']}.{$table['primary_key']}";
+         $condicao = "{$this->crud_tabela}.{$table['foreign_key']} = {$table['name']}.{$table['primary_key']}";
+
             // Chama o método join da classe Crud
             $this->Crud->join($table['name'], $condicao);
         }
     return $this;
 }
+
+}
+
 
 
 
@@ -384,6 +388,9 @@ function setLabels($labels){
     $this->labels=$labels;
     return $this;
 }
+
+
+
 function setCampos($campos){
     $this->campos=$campos;
     return $this;
@@ -514,4 +521,3 @@ return $this->banco->inTransaction();
 
 
 
-}
