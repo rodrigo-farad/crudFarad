@@ -1,6 +1,6 @@
 <?php
 
-namespace CrudFarad\service;
+namespace CrudFarad;
 
 use PDO;
 use PDOException;
